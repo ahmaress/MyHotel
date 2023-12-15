@@ -113,7 +113,7 @@ def create_booking(request):
             # Check for available rooms based on type
             available_rooms = Room.objects.filter(is_booked=False, type=room_type)
             if not available_rooms.exists():
-                return Response({'error': f'No available rooms of type {room_type} for the selected period'},
+                return Response({'error': f'No available rooms of that type {room_type} for the selected period'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
             selected_room = available_rooms.first()  
