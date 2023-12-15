@@ -17,13 +17,6 @@ class RoomInline(admin.TabularInline):
     model = Room
     extra = 1
 
-
-# @admin.register(Room)
-class RoomAdmin(admin.ModelAdmin):
-    list_display = ('type', 'room_number', 'is_booked', 'hotel')
-    list_filter = ('type', 'is_booked', 'hotel')
-    search_fields = ('type', 'room_number', 'hotel__name')
-
 class ReviewInline(admin.TabularInline):
     model = Review
     extra = 1
@@ -36,7 +29,7 @@ class StaffInline(admin.TabularInline):
 class HotelAdmin(admin.ModelAdmin):
     inlines = [RoomInline, ReviewInline, StaffInline]
 
-admin.site.register(Hotel, HotelAdmin, )
+admin.site.register(Hotel, HotelAdmin )
 admin.site.register(Staff)
 admin.site.register(Amenity)
 
