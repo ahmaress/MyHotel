@@ -27,7 +27,7 @@ from .views import delete_specific_booking
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/createcustomer', create_customer, name="createcustomername"),
+    path('api/createcustomer', create_customer, name="createcustomernameee"),
     path('api/createroom', create_room, name="createroomname"),
     path('api/createhotel', create_hotel, name="createhotelname"),
     path('api/createamenity', create_amenity, name="createamenityname"),
@@ -44,7 +44,7 @@ urlpatterns = [
     path('api/deletecustomer', delete_customer, name="deletecustomername"),
 
     path('api/createbooking', create_booking, name="createbookingname"),
-    path('api/getbookings', get_bookings_by_username, name="getcustomerbookingname"),
+    path('api/getbookings', get_bookings_by_username, name="getcustomerbookingnamee"),
     path('api/deletebookings', delete_bookings_by_username, name="deletecustomerbookingname"),
     path('api/deleteSpecificbookings', delete_specific_booking, name="deletecustomerbookingname"),
 

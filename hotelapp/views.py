@@ -113,7 +113,7 @@ def create_booking(request):
             # Check for available rooms based on type
             available_rooms = Room.objects.filter(is_booked=False, type=room_type)
             if not available_rooms.exists():
-                return Response({'error': f'No available rooms of type {room_type} for the selected period'},
+                return Response({'error': f'No available rooms of that type {room_type} for the selected period'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
             selected_room = available_rooms.first()  
@@ -145,7 +145,7 @@ def create_booking(request):
             payment_serializer.is_valid(raise_exception=True)
             payment_serializer.save()
             
-        return Response({'message': 'Bookings and payments created successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Bookings and payments of room created successfully'}, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,7 +261,7 @@ def create_room(request):
         room_serializer.is_valid(raise_exception=True)
         room_serializer.save()
 
-        return Response({'message': 'Room created successfully'},
+        return Response({'message': 'Room created successfullly'},
                         status=status.HTTP_201_CREATED)
     except Hotel.DoesNotExist:
         return Response({'error': f'Hotel with name "{hotel_name}" not found'},
