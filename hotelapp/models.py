@@ -6,7 +6,7 @@ class Hotel(models.Model):
     name = models.CharField(max_length=255)
     address = models.TextField()
     description = models.TextField()
-    # amenities = models.ManyToManyField('Amenity', related_name='hotels')
+    amenities = models.ManyToManyField('Amenity', related_name='hotels')
 
     def __str__(self):
         return self.name
