@@ -261,7 +261,7 @@ def create_room(request):
         room_serializer.is_valid(raise_exception=True)
         room_serializer.save()
 
-        return Response({'message': 'Room created successfully'},
+        return Response({'message': 'Room created successfullly'},
                         status=status.HTTP_201_CREATED)
     except Hotel.DoesNotExist:
         return Response({'error': f'Hotel with name "{hotel_name}" not found'},
