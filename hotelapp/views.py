@@ -9,16 +9,17 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity
+from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import AllowAny
 # from rest_framework.decorators import api_view, permission_classes
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer
 import datetime
 
 # class MySecureView(APIView):
@@ -309,7 +310,19 @@ def create_amenity(request):
                         status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(['GET'])
+def amenities_by_hotel(request, hotel_id):
+    try:
+        hotel = get_object_or_404(Hotel, id=hotel_id)
+        hotel_amenities = HotelAmenity.objects.filter(hotel=hotel)
+        amenities = [hotel_amenity.amenity for hotel_amenity in hotel_amenities]
+        amenity_list = [{'id': amenity.id, 'name': amenity.name} for amenity in amenities]
 
+        return JsonResponse({'hotel_id': hotel_id, 'amenities': amenity_list})
+    except Hotel.DoesNotExist:
+        return JsonResponse({'error': 'Hotel not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @api_view(['GET'])
@@ -397,8 +410,65 @@ def add_staff_to_hotel(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def add_category_with_products(request):
+    try:
+        data = request.data
+
+        # Serialize category data
+        category_serializer = CategorySerializer(data=data['category'])
+        category_serializer.is_valid(raise_exception=True)
+        category = category_serializer.save()
+
+        # Serialize and save products with the associated category
+        products_data = data.get('products', [])
+        for product_data in products_data:
+            product_data['category'] = category.id  # Set the category for the product
+            product_serializer = ProductSerializer(data=product_data)
+            product_serializer.is_valid(raise_exception=True)
+            product_serializer.save()
+
+        return Response({
+            'message': 'Category and products added successfully'
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def get_products_by_category(request, category_id):
+    try:
+        
+        category = get_object_or_404(Category, id=category_id)
+        
+        products = Product.objects.filter(category=category)
+
+        # Serialize the products
+        product_serializer = ProductSerializer(products, many=True)
+
+        return Response({'category_id': category.id, 'products': product_serializer.data})
+    except Category.DoesNotExist:
+        return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)        
+
+
+
+@api_view(['GET'])
+def get_category_by_product(request, product_id):
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        category = product.category
+
+        # Serialize the category
+        category_serializer = CategorySerializer(category)
+
+        return Response({'product_id': product.id, 'category': category_serializer.data})
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
