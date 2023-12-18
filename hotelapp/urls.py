@@ -5,6 +5,9 @@ from .views import create_customer
 from .views import create_room
 from .views import create_hotel
 from .views import create_amenity
+# from .views import create_person_with_passport
+from .views import create_passport_with_person
+
 from .views import hotels_by_amenity
 from .views import create_review
 from .views import get_category_by_product
@@ -13,6 +16,8 @@ from .views import get_products_by_category
 from .views import add_category_with_products
 from .views import amenities_by_hotel
 from .views import delete_customer
+from .views import passport_by_person
+from .views import person_by_passport
 from .views import create_booking
 from .views import get_bookings_by_username
 from .views import delete_bookings_by_username
@@ -31,6 +36,15 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/createcustomer', create_customer, name="createcustomernameee"),
     path('api/createroom', create_room, name="createroomname"),
+    # path('api/createpersonpassport', create_person_with_passport, name="createpersonpassport"),
+    path('api/createpassportperson', create_passport_with_person, name="createpersonpassport"),
+    path('api/personbypassport/<int:pass_id>/', person_by_passport, name="creategetproductbycategory"),
+    path('api/passbyperson/<int:person_id>/', passport_by_person, name="creategetproductbycategory"),
+
+
+
+    
+
     path('api/createhotel', create_hotel, name="createhotelname"),
     path('api/createamenity', create_amenity, name="createamenityname"),
     path('api/createproduct', add_category_with_products, name="createamenityname"),

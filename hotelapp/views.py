@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product
+from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product,Passport, Person
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
@@ -19,7 +19,7 @@ from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer
 import datetime
 
 # class MySecureView(APIView):
@@ -474,10 +474,58 @@ def get_category_by_product(request, product_id):
 
 
 
+@api_view(['POST'])
+def create_passport_with_person(request):
+    serializer = PassportSerializer(data=request.data)
+    if serializer.is_valid():
+        passport = serializer.save()
+
+        # Assuming the person data is included in the request
+        person_data = request.data.get('person', {})
+        person_data['passport'] = passport.id  # Associate the person with the created passport
+        person_serializer = PersonSerializer(data=person_data)
+        
+        if person_serializer.is_valid():
+            person_serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            passport.delete()  # Rollback: Delete the created passport if person creation fails
+            return Response(person_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def person_by_passport(request, pass_id):
+    try:
+        passport = get_object_or_404(Passport, id=pass_id)
+        person = get_object_or_404(Person, passport=passport)
+
+        # Serialize the person
+        person_serializer = PersonSerializer(person)
+
+        return Response({'passport_id': passport.id, 'person': person_serializer.data})
+    except Passport.DoesNotExist:
+        return Response({'error': 'Passport not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Person.DoesNotExist:
+        return Response({'error': 'Person not found for the given passport'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def passport_by_person(request, person_id):
+    try:
+        person = get_object_or_404(Person, id=person_id)
+        passport = person.passport
 
+        # Serialize the category
+        passport_serializer = PassportSerializer(passport)
+
+        return Response({'person_id': person.id, 'Passport': passport_serializer.data})
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
