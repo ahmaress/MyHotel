@@ -7,9 +7,11 @@ from .views import create_hotel
 from .views import create_amenity
 from .views import hotels_by_amenity
 from .views import create_review
+from .views import get_category_by_product
 from .views import add_staff_to_hotel
-
-
+from .views import get_products_by_category
+from .views import add_category_with_products
+from .views import amenities_by_hotel
 from .views import delete_customer
 from .views import create_booking
 from .views import get_bookings_by_username
@@ -31,7 +33,15 @@ urlpatterns = [
     path('api/createroom', create_room, name="createroomname"),
     path('api/createhotel', create_hotel, name="createhotelname"),
     path('api/createamenity', create_amenity, name="createamenityname"),
+    path('api/createproduct', add_category_with_products, name="createamenityname"),
+
     path('api/gethotelsbyamenity/<int:amenity_id>/', hotels_by_amenity, name="createamenityname"),
+    path('api/getamenitybyhotel/<int:hotel_id>/', amenities_by_hotel, name="createamenityname"),
+    path('api/get_products_by_category/<int:category_id>/', get_products_by_category, name="creategetproductbycategory"),
+    path('api/get_category_by_product/<int:product_id>/', get_category_by_product, name="creategetproductbycategory"),
+
+
+
 
 
     path('api/createreview', create_review, name="createreview"),
