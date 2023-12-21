@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Customer, Booking,Payment, Room, Hotel, Review, Staff, Amenity, Product, Category, Passport, Person
+from .models import Customer, Booking,Payment, Room, Hotel, Review, Staff, Amenity, Product, Category, Passport, Person, UserInfo
 
 
 admin.site.register(Customer)
@@ -9,6 +9,8 @@ admin.site.register(Payment)
 admin.site.register(Room)
 admin.site.register(Passport)
 admin.site.register(Person)
+admin.site.register(UserInfo)
+
 
 
 class RoomInline(admin.TabularInline):

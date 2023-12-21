@@ -126,6 +126,16 @@ class Person(models.Model):
         return f'{self.first_name} {self.last_name}'
 
 
+class UserInfo(models.Model):
+    cnic_number = models.CharField(max_length=15,null=True)
+    name = models.CharField(max_length=50,null=True)
+    address = models.CharField(max_length=100,null=True)
+    Gender = models.CharField(max_length=10,null=True)
+    issue_date = models.CharField(max_length=10,null=True)    
+    fname = models.CharField(max_length=50,null=True)
+        
+
+
 # class AhmarModel(models.Model):
 #     name = models.CharField(max_length=100)
 #     age = models.IntegerField()

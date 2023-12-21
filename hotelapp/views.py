@@ -13,13 +13,18 @@ from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Catego
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
+from PIL import Image
+import pytesseract
+import re
+from .models import UserInfo
 from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import AllowAny
 # from rest_framework.decorators import api_view, permission_classes
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
+
 import datetime
 
 # class MySecureView(APIView):
@@ -529,3 +534,67 @@ def passport_by_person(request, person_id):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def extract_text(request, format=None):
+    if request.method == 'POST':
+        file_path = request.data.get('file_path')  # Replace 'username' with the actual username
+
+        text = extract_text_from_image(file_path)
+        print(text)
+
+        user_info = parse_text(text)
+
+        save_to_database(user_info)
+
+        serializer = UserInfoSerializer(data=user_info)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def extract_text_from_image(image_path):
+    img = Image.open(image_path)
+    text = pytesseract.image_to_string(img)
+    # print("OCR Output:", text)
+    return text
+
+def parse_text(text):
+
+    cnic_number_match = re.search(r'\b\d{13}\b', text)
+    cnic_number = cnic_number_match.group(0) if cnic_number_match else None
+
+    name_match = re.search(r'Name\s*([\w\s]+)', text)
+    name = name_match.group(1).strip() if name_match else None
+    
+    address_match = re.search(r'Address\s*([\w\s,]+)', text)
+    address = address_match.group(1).strip() if address_match else None
+    
+    gender_match = re.search(r'Gender\s*([\w\s]+)', text, re.IGNORECASE)
+    gender = gender_match.group(1).strip() if gender_match else None
+
+    issue_date_match = re.search(r'Date of Issue\s*([\d/]+)', text)
+    issue_date = issue_date_match.group(1).strip() if issue_date_match else None
+    
+    father_name_match = re.search(r'Father Name\s*([\w\s]+)', text)
+    fname = father_name_match.group(1).strip() if father_name_match else None
+
+    return {
+        'cnic_number': cnic_number,
+        'name': name,
+        'address': address,
+        'gender': gender,
+        'issue_date': issue_date,
+        'fname': fname,   
+    }
+
+def save_to_database(user_info):
+    new_user = UserInfo(
+        cnic_number=user_info['cnic_number'],
+        name=user_info['name'],
+        address=user_info['address'],
+        Gender=user_info['gender'],
+        issue_date=user_info['issue_date'],
+        fname=user_info['fname']
+        
+    )
+    new_user.save()
