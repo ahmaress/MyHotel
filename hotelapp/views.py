@@ -9,17 +9,22 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product
+from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product,Passport, Person
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
+from PIL import Image
+import pytesseract
+import re
+from .models import UserInfo
 from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import AllowAny
 # from rest_framework.decorators import api_view, permission_classes
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
+
 import datetime
 
 # class MySecureView(APIView):
@@ -474,10 +479,122 @@ def get_category_by_product(request, product_id):
 
 
 
+@api_view(['POST'])
+def create_passport_with_person(request):
+    serializer = PassportSerializer(data=request.data)
+    if serializer.is_valid():
+        passport = serializer.save()
+
+        # Assuming the person data is included in the request
+        person_data = request.data.get('person', {})
+        person_data['passport'] = passport.id  # Associate the person with the created passport
+        person_serializer = PersonSerializer(data=person_data)
+        
+        if person_serializer.is_valid():
+            person_serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            passport.delete()  # Rollback: Delete the created passport if person creation fails
+            return Response(person_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def person_by_passport(request, pass_id):
+    try:
+        passport = get_object_or_404(Passport, id=pass_id)
+        person = get_object_or_404(Person, passport=passport)
+
+        # Serialize the person
+        person_serializer = PersonSerializer(person)
+
+        return Response({'passport_id': passport.id, 'person': person_serializer.data})
+    except Passport.DoesNotExist:
+        return Response({'error': 'Passport not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Person.DoesNotExist:
+        return Response({'error': 'Person not found for the given passport'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def passport_by_person(request, person_id):
+    try:
+        person = get_object_or_404(Person, id=person_id)
+        passport = person.passport
+
+        # Serialize the category
+        passport_serializer = PassportSerializer(passport)
+
+        return Response({'person_id': person.id, 'Passport': passport_serializer.data})
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def extract_text(request, format=None):
+    if request.method == 'POST':
+        file_path = request.data.get('file_path')  # Replace 'username' with the actual username
 
+        text = extract_text_from_image(file_path)
+        print(text)
+
+        user_info = parse_text(text)
+
+        save_to_database(user_info)
+
+        serializer = UserInfoSerializer(data=user_info)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def extract_text_from_image(image_path):
+    img = Image.open(image_path)
+    text = pytesseract.image_to_string(img)
+    # print("OCR Output:", text)
+    return text
+
+def parse_text(text):
+
+    cnic_number_match = re.search(r'\b\d{13}\b', text)
+    cnic_number = cnic_number_match.group(0) if cnic_number_match else None
+
+    name_match = re.search(r'Name\s*([\w\s]+)', text)
+    name = name_match.group(1).strip() if name_match else None
+    
+    address_match = re.search(r'Address\s*([\w\s,]+)', text)
+    address = address_match.group(1).strip() if address_match else None
+    
+    gender_match = re.search(r'Gender\s*([\w\s]+)', text, re.IGNORECASE)
+    gender = gender_match.group(1).strip() if gender_match else None
+
+    issue_date_match = re.search(r'Date of Issue\s*([\d/]+)', text)
+    issue_date = issue_date_match.group(1).strip() if issue_date_match else None
+    
+    father_name_match = re.search(r'Father Name\s*([\w\s]+)', text)
+    fname = father_name_match.group(1).strip() if father_name_match else None
+
+    return {
+        'cnic_number': cnic_number,
+        'name': name,
+        'address': address,
+        'gender': gender,
+        'issue_date': issue_date,
+        'fname': fname,   
+    }
+
+def save_to_database(user_info):
+    new_user = UserInfo(
+        cnic_number=user_info['cnic_number'],
+        name=user_info['name'],
+        address=user_info['address'],
+        Gender=user_info['gender'],
+        issue_date=user_info['issue_date'],
+        fname=user_info['fname']
+        
+    )
+    new_user.save()

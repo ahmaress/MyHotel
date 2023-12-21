@@ -1,12 +1,15 @@
 from django.contrib import admin
 
-from .models import Customer, Booking,Payment, Room, Hotel, Review, Staff, Amenity, Product, Category
+from .models import Customer, Booking,Payment, Room, Hotel, Review, Staff, Amenity, Product, Category, Passport, Person, UserInfo
 
 
 admin.site.register(Customer)
 admin.site.register(Booking)
 admin.site.register(Payment)
 admin.site.register(Room)
+admin.site.register(Passport)
+admin.site.register(Person)
+admin.site.register(UserInfo)
 
 
 
@@ -37,7 +40,7 @@ admin.site.register(Staff)
 admin.site.register(Amenity)
 admin.site.register(Product)
 admin.site.register(Category, CategoryAdmin)
-
+# admin.site.register(Product)
 
 
 

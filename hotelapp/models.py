@@ -104,6 +104,36 @@ class Product(models.Model):
         return self.name
         # return respnse({"error":"if we you are not providing the credentials you wil"})
     
+# from django.db import models
+
+class Passport(models.Model):
+    passport_number = models.CharField(max_length=20, unique=True)
+    issue_date = models.DateField()
+    expiration_date = models.DateField()
+    country_of_issue = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f'Passport {self.passport_number}'
+
+
+class Person(models.Model):
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    date_of_birth = models.DateField()
+    passport = models.OneToOneField(Passport, on_delete=models.CASCADE, null=True, blank=True,related_name='person')
+
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
+
+
+class UserInfo(models.Model):
+    cnic_number = models.CharField(max_length=15,null=True)
+    name = models.CharField(max_length=50,null=True)
+    address = models.CharField(max_length=100,null=True)
+    Gender = models.CharField(max_length=10,null=True)
+    issue_date = models.CharField(max_length=10,null=True)    
+    fname = models.CharField(max_length=50,null=True)
+        
 
 
 # class AhmarModel(models.Model):

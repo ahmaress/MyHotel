@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from .models import Customer,Booking,Payment, Room, Hotel, Review, Staff,Amenity, Product, Category 
+from .models import Customer,Booking,Payment, Room, Hotel, Review, Staff,Amenity, Product, Category,Passport, Person,UserInfo 
 
 
 
@@ -61,8 +61,27 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'price', 'category']
 
+# serializers.py
+# from rest_framework import serializers
+
+class PassportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Passport
+        fields = ['id', 'passport_number', 'issue_date', 'expiration_date','country_of_issue']
 
 
+class PersonSerializer(serializers.ModelSerializer):
+    # passport = PassportSerializer()
+
+    class Meta:
+        model = Person
+        fields = ['id', 'first_name', 'last_name', 'date_of_birth','passport']
+
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserInfo
+        fields = ['cnic_number', 'name','fname', 'address', 'Gender', 'issue_date']
     # def create(self, validated_data):
     #     user_data = validated_data.pop('user')
     #     password = user_data.pop('password')
