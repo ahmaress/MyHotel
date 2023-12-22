@@ -1,5 +1,6 @@
 import json
 import datetime
+# from datetime import datetime
 from rest_framework.request import Request
 from dateutil import parser
 from rest_framework import status
@@ -15,6 +16,10 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
 from PIL import Image
 import pytesseract
+
+
+
+
 import re
 from .models import UserInfo
 from django.shortcuts import get_object_or_404
@@ -25,7 +30,7 @@ from django.shortcuts import get_object_or_404
 
 from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
 
-import datetime
+# import datetimeime
 
 # class MySecureView(APIView):
 #     authentication_classes = [JWTAuthentication]
@@ -548,8 +553,11 @@ def extract_text(request, format=None):
 
         serializer = UserInfoSerializer(data=user_info)
         if serializer.is_valid():
+            # Save to the database only if the serializer is valid
+            save_to_database(user_info)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
+            print("Serializer Errors:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def extract_text_from_image(image_path):
@@ -560,8 +568,9 @@ def extract_text_from_image(image_path):
 
 def parse_text(text):
 
-    cnic_number_match = re.search(r'\b\d{13}\b', text)
+    cnic_number_match = re.search(r'\b\d{5}\s*-\s*\s*-\s*\d{7}\s*-\s*\d{1}\b', text)
     cnic_number = cnic_number_match.group(0) if cnic_number_match else None
+
 
     name_match = re.search(r'Name\s*([\w\s]+)', text)
     name = name_match.group(1).strip() if name_match else None
@@ -572,8 +581,8 @@ def parse_text(text):
     gender_match = re.search(r'Gender\s*([\w\s]+)', text, re.IGNORECASE)
     gender = gender_match.group(1).strip() if gender_match else None
 
-    issue_date_match = re.search(r'Date of Issue\s*([\d/]+)', text)
-    issue_date = issue_date_match.group(1).strip() if issue_date_match else None
+    date_match = re.search(r'\b\d{2}\.\d{2}.\d{4}\b', text)
+    issue_date = date_match.group(0).strip() if date_match else None
     
     father_name_match = re.search(r'Father Name\s*([\w\s]+)', text)
     fname = father_name_match.group(1).strip() if father_name_match else None
@@ -588,13 +597,19 @@ def parse_text(text):
     }
 
 def save_to_database(user_info):
+    # Convert the 'issue_date' string to a Python datetime object
+    issue_date_str = user_info['issue_date']
+    issue_date = datetime.datetime.strptime(issue_date_str, '%d.%m.%Y').date() if issue_date_str else None
+
+    # Format the date as 'YYYY-MM-DD' if it exists, otherwise, set it to None
+    # formatted_issue_date = issue_date.strftime('%Y-%m-%d') if issue_date else None
+
     new_user = UserInfo(
         cnic_number=user_info['cnic_number'],
         name=user_info['name'],
         address=user_info['address'],
         Gender=user_info['gender'],
-        issue_date=user_info['issue_date'],
+        issue_date=issue_date,  # Use the formatted date
         fname=user_info['fname']
-        
     )
     new_user.save()

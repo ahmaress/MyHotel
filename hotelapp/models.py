@@ -127,11 +127,11 @@ class Person(models.Model):
 
 
 class UserInfo(models.Model):
-    cnic_number = models.CharField(max_length=15,null=True)
+    cnic_number = models.CharField(max_length=20,null=True)
     name = models.CharField(max_length=50,null=True)
     address = models.CharField(max_length=100,null=True)
     Gender = models.CharField(max_length=10,null=True)
-    issue_date = models.CharField(max_length=10,null=True)    
+    issue_date = models.DateField(null=True)   
     fname = models.CharField(max_length=50,null=True)
         
 
