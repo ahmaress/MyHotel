@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from .models import Customer,Booking,Payment, Room, Hotel, Review, Staff,Amenity
+from .models import Customer,Booking, Room, Hotel, Review, Staff,Amenity, Product, Category,Passport, Person,UserInfo 
 
 
 
@@ -24,7 +24,7 @@ class RoomSerializer(serializers.ModelSerializer):
     # hotel = HotelSerializer()
     class Meta:
         model = Room
-        fields = ['id', 'type', 'is_booked', 'room_number','hotel']
+        fields = ['id', 'type', 'is_booked', 'room_number','hotel','price']
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -41,19 +41,47 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = ['id', 'customer','rooms', 'check_in_date', 'check_out_date']
     
     
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = ['id', 'amount', 'payment_date', 'booking'] 
+# class PaymentSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Payment
+#         fields = ['id', 'amount', 'payment_date', 'booking'] 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['customer', 'hotel', 'rating', 'comment']
 
+class CategorySerializer(serializers.ModelSerializer):
+    # products = ProductSerializer(many=True, read_only=True)
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
           
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'category']
+
+# serializers.py
+# from rest_framework import serializers
+
+class PassportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Passport
+        fields = ['id', 'passport_number', 'issue_date', 'expiration_date','country_of_issue']
 
 
+class PersonSerializer(serializers.ModelSerializer):
+    # passport = PassportSerializer()
 
+    class Meta:
+        model = Person
+        fields = ['id', 'first_name', 'last_name', 'date_of_birth','passport']
+
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserInfo
+        fields = ['cnic_number', 'name','fname', 'address', 'Gender', 'issue_date']
     # def create(self, validated_data):
     #     user_data = validated_data.pop('user')
     #     password = user_data.pop('password')

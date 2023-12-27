@@ -1,5 +1,6 @@
 import json
 import datetime
+# from datetime import datetime
 from rest_framework.request import Request
 from dateutil import parser
 from rest_framework import status
@@ -9,17 +10,27 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity
+from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product,Passport, Person
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
+from PIL import Image
+import pytesseract
+
+
+
+
+import re
+from .models import UserInfo
+from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import AllowAny
 # from rest_framework.decorators import api_view, permission_classes
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer
-import datetime
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
+
+# import datetimeime
 
 # class MySecureView(APIView):
 #     authentication_classes = [JWTAuthentication]
@@ -104,11 +115,12 @@ def create_booking(request):
                 check_out_date >= booking.check_in_date
             ):
                 return Response({'error': 'Dates are already occupied. Cannot make the booking.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        total_payment_amount = 0
         # Create a booking for each room
         for room_data in rooms_data:
             room_type = room_data.get('room_type')
-            payment_amount = room_data.get('payment_amount')
+            num_days = (check_out_date - check_in_date).days + 1
+            # payment_amount = room_data.get('payment_amount')
 
             # Check for available rooms based on type
             available_rooms = Room.objects.filter(is_booked=False, type=room_type)
@@ -117,6 +129,7 @@ def create_booking(request):
                                 status=status.HTTP_400_BAD_REQUEST)
 
             selected_room = available_rooms.first()  
+            total_payment_amount += selected_room.price * num_days
 
             # Create a booking
             booking_data = {
@@ -135,17 +148,18 @@ def create_booking(request):
             selected_room.save()
 
             # Create a payment for the booking
-            payment_data = {
-                "amount": payment_amount,
-                "payment_date": date.today(),
-                "booking": booking.id
-            }
+            # payment_data = {
+            #     "amount": payment_amount,
+            #     "payment_date": date.today(),
+            #     "booking": booking.id
+            # }
 
-            payment_serializer = PaymentSerializer(data=payment_data)
-            payment_serializer.is_valid(raise_exception=True)
-            payment_serializer.save()
+            # payment_serializer = PaymentSerializer(data=payment_data)
+            # payment_serializer.is_valid(raise_exception=True)
+            # payment_serializer.save()
             
-        return Response({'message': 'Bookings and payments created successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': f'You have booked {len(rooms_data)} rooms for {num_days} days, and your amount is {total_payment_amount}'}, status=status.HTTP_201_CREATED)
+
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -254,14 +268,15 @@ def create_room(request):
             "type": room_data.get('type'),
             "is_booked": room_data.get('is_booked', False),
             "room_number": room_data.get('room_number'),
-            "hotel": hotel_instance.id  
+            "hotel": hotel_instance.id  ,
+            "price": room_data.get('price', 0.0)
         } for room_data in rooms_data]
 
         room_serializer = RoomSerializer(data=room_data_pass, many=True)
         room_serializer.is_valid(raise_exception=True)
         room_serializer.save()
 
-        return Response({'message': 'Room created successfully'},
+        return Response({'message': 'Room created successfullly'},
                         status=status.HTTP_201_CREATED)
     except Hotel.DoesNotExist:
         return Response({'error': f'Hotel with name "{hotel_name}" not found'},
@@ -309,7 +324,19 @@ def create_amenity(request):
                         status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(['GET'])
+def amenities_by_hotel(request, hotel_id):
+    try:
+        hotel = get_object_or_404(Hotel, id=hotel_id)
+        hotel_amenities = HotelAmenity.objects.filter(hotel=hotel)
+        amenities = [hotel_amenity.amenity for hotel_amenity in hotel_amenities]
+        amenity_list = [{'id': amenity.id, 'name': amenity.name} for amenity in amenities]
 
+        return JsonResponse({'hotel_id': hotel_id, 'amenities': amenity_list})
+    except Hotel.DoesNotExist:
+        return JsonResponse({'error': 'Hotel not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @api_view(['GET'])
@@ -397,17 +424,194 @@ def add_staff_to_hotel(request):
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def add_category_with_products(request):
+    try:
+        data = request.data
+
+        # Serialize category data
+        category_serializer = CategorySerializer(data=data['category'])
+        category_serializer.is_valid(raise_exception=True)
+        category = category_serializer.save()
+
+        # Serialize and save products with the associated category
+        products_data = data.get('products', [])
+        for product_data in products_data:
+            product_data['category'] = category.id  # Set the category for the product
+            product_serializer = ProductSerializer(data=product_data)
+            product_serializer.is_valid(raise_exception=True)
+            product_serializer.save()
+
+        return Response({
+            'message': 'Category and products added successfully'
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def get_products_by_category(request, category_id):
+    try:
+        
+        category = get_object_or_404(Category, id=category_id)
+        
+        products = Product.objects.filter(category=category)
+
+        # Serialize the products
+        product_serializer = ProductSerializer(products, many=True)
+
+        return Response({'category_id': category.id, 'products': product_serializer.data})
+    except Category.DoesNotExist:
+        return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)        
+
+
+
+@api_view(['GET'])
+def get_category_by_product(request, product_id):
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        category = product.category
+
+        # Serialize the category
+        category_serializer = CategorySerializer(category)
+
+        return Response({'product_id': product.id, 'category': category_serializer.data})
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
 
+@api_view(['POST'])
+def create_passport_with_person(request):
+    serializer = PassportSerializer(data=request.data)
+    if serializer.is_valid():
+        passport = serializer.save()
+
+        # Assuming the person data is included in the request
+        person_data = request.data.get('person', {})
+        person_data['passport'] = passport.id  # Associate the person with the created passport
+        person_serializer = PersonSerializer(data=person_data)
+        
+        if person_serializer.is_valid():
+            person_serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            passport.delete()  # Rollback: Delete the created passport if person creation fails
+            return Response(person_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def person_by_passport(request, pass_id):
+    try:
+        passport = get_object_or_404(Passport, id=pass_id)
+        person = get_object_or_404(Person, passport=passport)
+
+        # Serialize the person
+        person_serializer = PersonSerializer(person)
+
+        return Response({'passport_id': passport.id, 'person': person_serializer.data})
+    except Passport.DoesNotExist:
+        return Response({'error': 'Passport not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Person.DoesNotExist:
+        return Response({'error': 'Person not found for the given passport'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def passport_by_person(request, person_id):
+    try:
+        person = get_object_or_404(Person, id=person_id)
+        passport = person.passport
+
+        # Serialize the category
+        passport_serializer = PassportSerializer(passport)
+
+        return Response({'person_id': person.id, 'Passport': passport_serializer.data})
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def extract_text(request, format=None):
+    if request.method == 'POST':
+        file_path = request.data.get('file_path')  # Replace 'username' with the actual username
+
+        text = extract_text_from_image(file_path)
+        print(text)
+
+        user_info = parse_text(text)
+
+        save_to_database(user_info)
+
+        serializer = UserInfoSerializer(data=user_info)
+        if serializer.is_valid():
+            # Save to the database only if the serializer is valid
+            save_to_database(user_info)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print("Serializer Errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def extract_text_from_image(image_path):
+    img = Image.open(image_path)
+    text = pytesseract.image_to_string(img)
+    # print("OCR Output:", text)
+    return text
+
+def parse_text(text):
+
+    cnic_number_match = re.search(r'\b\d{5}\s*-\s*\s*-\s*\d{7}\s*-\s*\d{1}\b', text)
+    cnic_number = cnic_number_match.group(0) if cnic_number_match else None
 
 
+    name_match = re.search(r'Name\s*([\w\s]+)', text)
+    name = name_match.group(1).strip() if name_match else None
+    
+    address_match = re.search(r'Address\s*([\w\s,]+)', text)
+    address = address_match.group(1).strip() if address_match else None
+    
+    gender_match = re.search(r'Gender\s*([\w\s]+)', text, re.IGNORECASE)
+    gender = gender_match.group(1).strip() if gender_match else None
 
+    date_match = re.search(r'\b\d{2}\.\d{2}.\d{4}\b', text)
+    issue_date = date_match.group(0).strip() if date_match else None
+    
+    father_name_match = re.search(r'Father Name\s*([\w\s]+)', text)
+    fname = father_name_match.group(1).strip() if father_name_match else None
+
+    return {
+        'cnic_number': cnic_number,
+        'name': name,
+        'address': address,
+        'gender': gender,
+        'issue_date': issue_date,
+        'fname': fname,   
+    }
+
+def save_to_database(user_info):
+    # Convert the 'issue_date' string to a Python datetime object
+    issue_date_str = user_info['issue_date']
+    issue_date = datetime.datetime.strptime(issue_date_str, '%d.%m.%Y').date() if issue_date_str else None
+
+
+    new_user = UserInfo(
+        cnic_number=user_info['cnic_number'],
+        name=user_info['name'],
+        address=user_info['address'],
+        Gender=user_info['gender'],
+        issue_date=issue_date,  # Use the formatted date
+        fname=user_info['fname']
+    )
+    new_user.save()

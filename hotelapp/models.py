@@ -31,6 +31,7 @@ class Room(models.Model):
     room_number = models.CharField(max_length=10, unique=True, null=True)
     is_booked = models.BooleanField(default=False)
     hotel = models.ForeignKey(Hotel, on_delete=models.CASCADE,null=True)
+    price = models.DecimalField(max_digits=8, decimal_places=2, null=True)
 
 
     def __str__(self):
@@ -73,16 +74,67 @@ class Booking(models.Model):
     check_out_date = models.DateField()
 
 
-class Payment(models.Model):
-    id = models.AutoField(primary_key=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_date = models.DateField()
-    booking = models.OneToOneField(Booking, on_delete=models.CASCADE)
+# class Payment(models.Model):
+#     id = models.AutoField(primary_key=True)
+#     amount = models.DecimalField(max_digits=10, decimal_places=2)
+#     payment_date = models.DateField()
+#     booking = models.OneToOneField(Booking, on_delete=models.CASCADE)
+
+#     def __str__(self):
+#         return f"Payment for Booking {self.booking.id}"
+
+# models.py
+
+from django.db import models
+
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+    # product = models.OneToManyField(Product, on_delete=models.CASCADE, related_name='categories')
+
 
     def __str__(self):
-        return f"Payment for Booking {self.booking.id}"
+        return self.name
 
+class Product(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+
+    def __str__(self):
+        return self.name
+        # return respnse({"error":"if we you are not providing the credentials you wil"})
     
+# from django.db import models
+
+class Passport(models.Model):
+    passport_number = models.CharField(max_length=20, unique=True)
+    issue_date = models.DateField()
+    expiration_date = models.DateField()
+    country_of_issue = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f'Passport {self.passport_number}'
+
+
+class Person(models.Model):
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    date_of_birth = models.DateField()
+    passport = models.OneToOneField(Passport, on_delete=models.CASCADE, null=True, blank=True,related_name='person')
+
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
+
+
+class UserInfo(models.Model):
+    cnic_number = models.CharField(max_length=20,null=True)
+    name = models.CharField(max_length=50,null=True)
+    address = models.CharField(max_length=100,null=True)
+    Gender = models.CharField(max_length=10,null=True)
+    issue_date = models.DateField(null=True)   
+    fname = models.CharField(max_length=50,null=True)
+        
 
 
 # class AhmarModel(models.Model):
