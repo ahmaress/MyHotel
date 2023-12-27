@@ -1,5 +1,6 @@
 import json
 import datetime
+# from datetime import datetime
 from rest_framework.request import Request
 from dateutil import parser
 from rest_framework import status
@@ -15,6 +16,10 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
 from PIL import Image
 import pytesseract
+
+
+
+
 import re
 from .models import UserInfo
 from django.shortcuts import get_object_or_404
@@ -23,9 +28,9 @@ from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
 
-import datetime
+# import datetimeime
 
 # class MySecureView(APIView):
 #     authentication_classes = [JWTAuthentication]
@@ -110,11 +115,12 @@ def create_booking(request):
                 check_out_date >= booking.check_in_date
             ):
                 return Response({'error': 'Dates are already occupied. Cannot make the booking.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        total_payment_amount = 0
         # Create a booking for each room
         for room_data in rooms_data:
             room_type = room_data.get('room_type')
-            payment_amount = room_data.get('payment_amount')
+            num_days = (check_out_date - check_in_date).days + 1
+            # payment_amount = room_data.get('payment_amount')
 
             # Check for available rooms based on type
             available_rooms = Room.objects.filter(is_booked=False, type=room_type)
@@ -123,6 +129,7 @@ def create_booking(request):
                                 status=status.HTTP_400_BAD_REQUEST)
 
             selected_room = available_rooms.first()  
+            total_payment_amount += selected_room.price * num_days
 
             # Create a booking
             booking_data = {
@@ -141,17 +148,18 @@ def create_booking(request):
             selected_room.save()
 
             # Create a payment for the booking
-            payment_data = {
-                "amount": payment_amount,
-                "payment_date": date.today(),
-                "booking": booking.id
-            }
+            # payment_data = {
+            #     "amount": payment_amount,
+            #     "payment_date": date.today(),
+            #     "booking": booking.id
+            # }
 
-            payment_serializer = PaymentSerializer(data=payment_data)
-            payment_serializer.is_valid(raise_exception=True)
-            payment_serializer.save()
+            # payment_serializer = PaymentSerializer(data=payment_data)
+            # payment_serializer.is_valid(raise_exception=True)
+            # payment_serializer.save()
             
-        return Response({'message': 'Bookings and payments of room created successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': f'You have booked {len(rooms_data)} rooms for {num_days} days, and your amount is {total_payment_amount}'}, status=status.HTTP_201_CREATED)
+
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -260,7 +268,8 @@ def create_room(request):
             "type": room_data.get('type'),
             "is_booked": room_data.get('is_booked', False),
             "room_number": room_data.get('room_number'),
-            "hotel": hotel_instance.id  
+            "hotel": hotel_instance.id  ,
+            "price": room_data.get('price', 0.0)
         } for room_data in rooms_data]
 
         room_serializer = RoomSerializer(data=room_data_pass, many=True)
@@ -548,8 +557,11 @@ def extract_text(request, format=None):
 
         serializer = UserInfoSerializer(data=user_info)
         if serializer.is_valid():
+            # Save to the database only if the serializer is valid
+            save_to_database(user_info)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
+            print("Serializer Errors:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def extract_text_from_image(image_path):
@@ -560,8 +572,9 @@ def extract_text_from_image(image_path):
 
 def parse_text(text):
 
-    cnic_number_match = re.search(r'\b\d{13}\b', text)
+    cnic_number_match = re.search(r'\b\d{5}\s*-\s*\s*-\s*\d{7}\s*-\s*\d{1}\b', text)
     cnic_number = cnic_number_match.group(0) if cnic_number_match else None
+
 
     name_match = re.search(r'Name\s*([\w\s]+)', text)
     name = name_match.group(1).strip() if name_match else None
@@ -572,8 +585,8 @@ def parse_text(text):
     gender_match = re.search(r'Gender\s*([\w\s]+)', text, re.IGNORECASE)
     gender = gender_match.group(1).strip() if gender_match else None
 
-    issue_date_match = re.search(r'Date of Issue\s*([\d/]+)', text)
-    issue_date = issue_date_match.group(1).strip() if issue_date_match else None
+    date_match = re.search(r'\b\d{2}\.\d{2}.\d{4}\b', text)
+    issue_date = date_match.group(0).strip() if date_match else None
     
     father_name_match = re.search(r'Father Name\s*([\w\s]+)', text)
     fname = father_name_match.group(1).strip() if father_name_match else None
@@ -588,13 +601,17 @@ def parse_text(text):
     }
 
 def save_to_database(user_info):
+    # Convert the 'issue_date' string to a Python datetime object
+    issue_date_str = user_info['issue_date']
+    issue_date = datetime.datetime.strptime(issue_date_str, '%d.%m.%Y').date() if issue_date_str else None
+
+
     new_user = UserInfo(
         cnic_number=user_info['cnic_number'],
         name=user_info['name'],
         address=user_info['address'],
         Gender=user_info['gender'],
-        issue_date=user_info['issue_date'],
+        issue_date=issue_date,  # Use the formatted date
         fname=user_info['fname']
-        
     )
     new_user.save()

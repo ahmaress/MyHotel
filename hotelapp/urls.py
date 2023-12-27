@@ -39,15 +39,11 @@ urlpatterns = [
     path('api/createroom', create_room, name="createroomname"),
     path('api/extracttext', extract_text, name="createroomname"),
 
-    # path('api/createpersonpassport', create_person_with_passport, name="createpersonpassport"),
     path('api/createpassportperson', create_passport_with_person, name="createpersonpassport"),
     path('api/personbypassport/<int:pass_id>/', person_by_passport, name="creategetproductbycategory"),
     path('api/passbyperson/<int:person_id>/', passport_by_person, name="creategetproductbycategory"),
     
     
-    
-    
-    # path('api/extract_text/', ExtractTextView.as_view(), name='extract_text'),
 
 
 
