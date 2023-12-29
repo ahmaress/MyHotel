@@ -72,16 +72,21 @@ class Booking(models.Model):
     rooms = models.ManyToManyField(Room, related_name='bookings')
     check_in_date = models.DateField()
     check_out_date = models.DateField()
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2,null=True)
+    is_paid = models.BooleanField(default=False,null=True)
+    # deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    # is_canceled = models.BooleanField(default=False,null=True)
 
 
-# class Payment(models.Model):
-#     id = models.AutoField(primary_key=True)
-#     amount = models.DecimalField(max_digits=10, decimal_places=2)
-#     payment_date = models.DateField()
-#     booking = models.OneToOneField(Booking, on_delete=models.CASCADE)
+class Payment(models.Model):
+    id = models.AutoField(primary_key=True)
+    uname = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # payment_date = models.DateField()
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE)
 
-#     def __str__(self):
-#         return f"Payment for Booking {self.booking.id}"
+    def __str__(self):
+        return f"Payment for Booking {self.booking.id}"
 
 # models.py
 

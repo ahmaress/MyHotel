@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from .models import Customer,Booking, Room, Hotel, Review, Staff,Amenity, Product, Category,Passport, Person,UserInfo 
+from .models import Customer,Booking,Payment, Room, Hotel, Review, Staff,Amenity, Product, Category,Passport, Person,UserInfo 
 
 
 
@@ -38,13 +38,13 @@ class CustomerSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
-        fields = ['id', 'customer','rooms', 'check_in_date', 'check_out_date']
+        fields = ['id', 'customer','rooms', 'check_in_date', 'check_out_date','payment_amount']
     
     
-# class PaymentSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Payment
-#         fields = ['id', 'amount', 'payment_date', 'booking'] 
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id','uname', 'amount', 'booking'] 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review

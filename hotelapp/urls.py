@@ -20,6 +20,8 @@ from .views import extract_text
 from .views import passport_by_person
 from .views import person_by_passport
 from .views import create_booking
+from .views import create_booking
+from .views import process_payment
 from .views import get_bookings_by_username
 from .views import delete_bookings_by_username
 from .views import delete_specific_booking
@@ -42,6 +44,7 @@ urlpatterns = [
     path('api/createpassportperson', create_passport_with_person, name="createpersonpassport"),
     path('api/personbypassport/<int:pass_id>/', person_by_passport, name="creategetproductbycategory"),
     path('api/passbyperson/<int:person_id>/', passport_by_person, name="creategetproductbycategory"),
+    path('api/process_payment/', process_payment, name='process_payment'),
     
     
 

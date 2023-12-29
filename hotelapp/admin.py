@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from .models import Customer, Booking, Room, Hotel, Review, Staff, Amenity, Product, Category, Passport, Person, UserInfo
+from .models import Customer, Booking,Payment, Room, Hotel, Review, Staff, Amenity, Product, Category, Passport, Person, UserInfo
 
 
 admin.site.register(Customer)
 admin.site.register(Booking)
-# admin.site.register(Payment)
+admin.site.register(Payment)
 admin.site.register(Room)
 admin.site.register(Passport)
 admin.site.register(Person)

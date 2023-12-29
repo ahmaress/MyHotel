@@ -8,9 +8,10 @@ from django.shortcuts import render
 from datetime import date
 from django.http import JsonResponse
 from django.contrib.auth.models import User
+from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product,Passport, Person
+from .models import Customer, Booking, Room, Hotel,Amenity, HotelAmenity, Category, Product,Passport, Person,Payment
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
@@ -28,7 +29,7 @@ from django.shortcuts import get_object_or_404
 # from rest_framework.permissions import IsAuthenticated
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
+from .serializers import CustomerSerializer, UserSerializer, BookingSerializer,PaymentSerializer,PassportSerializer, PersonSerializer, RoomSerializer,HotelSerializer, ReviewSerializer, StaffSerializer, AmenitySerializer, CategorySerializer, ProductSerializer,UserInfoSerializer
 
 # import datetimeime
 
@@ -89,7 +90,6 @@ def delete_customer(request):
 def create_booking(request):
     try:
         data = request.data
-        # username = data.get('customer', {}).get('username')
         username = data.get('username')
         check_in_date = data.get('check_in_date')
         check_out_date = data.get('check_out_date')
@@ -115,12 +115,13 @@ def create_booking(request):
                 check_out_date >= booking.check_in_date
             ):
                 return Response({'error': 'Dates are already occupied. Cannot make the booking.'}, status=status.HTTP_400_BAD_REQUEST)
-        total_payment_amount = 0
+        
+        total_payment_amount = 0  # Initialize total_payment_amount outside the loop
+        
         # Create a booking for each room
         for room_data in rooms_data:
             room_type = room_data.get('room_type')
             num_days = (check_out_date - check_in_date).days + 1
-            # payment_amount = room_data.get('payment_amount')
 
             # Check for available rooms based on type
             available_rooms = Room.objects.filter(is_booked=False, type=room_type)
@@ -129,14 +130,17 @@ def create_booking(request):
                                 status=status.HTTP_400_BAD_REQUEST)
 
             selected_room = available_rooms.first()  
-            total_payment_amount += selected_room.price * num_days
+            room_payment_amount = selected_room.price * num_days  # Calculate payment amount for the current room
 
-            # Create a booking
+            total_payment_amount += room_payment_amount  # Accumulate the total payment amount
+            
+            # Create a booking with the specific payment amount for the room
             booking_data = {
                 "customer": customer.id,
                 "check_in_date": check_in_date,
                 "check_out_date": check_out_date,
-                "rooms": [selected_room.id]  
+                "rooms": [selected_room.id],
+                "payment_amount": room_payment_amount  
             }
 
             booking_serializer = BookingSerializer(data=booking_data)
@@ -147,22 +151,59 @@ def create_booking(request):
             selected_room.is_booked = True
             selected_room.save()
 
-            # Create a payment for the booking
-            # payment_data = {
-            #     "amount": payment_amount,
-            #     "payment_date": date.today(),
-            #     "booking": booking.id
-            # }
-
-            # payment_serializer = PaymentSerializer(data=payment_data)
-            # payment_serializer.is_valid(raise_exception=True)
-            # payment_serializer.save()
-            
+        # Return the response after processing all rooms
         return Response({'message': f'You have booked {len(rooms_data)} rooms for {num_days} days, and your amount is {total_payment_amount}'}, status=status.HTTP_201_CREATED)
-
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def process_payment(request):
+    try:
+        # Extract data from the request
+        data = request.data
+        username = data.get('username')
+        booking_ids = data.get('booking_ids', [])  # List of booking IDs
+        payment_amount = data.get('payment_amount')
+
+        if not username or not booking_ids or not payment_amount:
+            return Response({'error': 'Invalid request data'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Use transaction.atomic to ensure atomicity of the operations
+        with transaction.atomic():
+            payments = []  # List to store PaymentSerializer instances
+
+            # Loop through booking_ids and create PaymentSerializer instances
+            for booking_id in booking_ids:
+                booking = Booking.objects.get(id=booking_id)
+
+                # Check if the booking is already paid
+                if booking.is_paid:
+                    return Response({'error': f'Booking with ID {booking_id} is already paid'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Create PaymentSerializer instance
+                payment_data = {'uname': username, 'amount': payment_amount, 'booking': booking_id}
+                payment_serializer = PaymentSerializer(data=payment_data)
+                payment_serializer.is_valid(raise_exception=True)
+                payment = payment_serializer.save()
+                payments.append(payment)
+                booking.is_paid = True
+                booking.save() 
+
+                # print(f"Booking ID: {booking_id}, Payment Amount: {payment.amount}")
+
+            # Update the bookings to mark them as paid
+            # Booking.objects.filter(id__in=booking_ids).update(is_paid=True)
+
+        return Response({'message': 'Payment processed successfully'}, status=status.HTTP_200_OK)
+
+    except Booking.DoesNotExist:
+        return Response({'error': 'One or more bookings not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 @api_view(['GET'])
