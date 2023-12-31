@@ -9,6 +9,7 @@ from .views import create_amenity
 from .views import create_passport_with_person
 
 from .views import hotels_by_amenity
+from .views import cancel_booking
 from .views import create_review
 from .views import get_category_by_product
 from .views import add_staff_to_hotel
@@ -40,6 +41,8 @@ urlpatterns = [
     path('api/createcustomer', create_customer, name="createcustomernameee"),
     path('api/createroom', create_room, name="createroomname"),
     path('api/extracttext', extract_text, name="createroomname"),
+    path('api/cancelbooking', cancel_booking, name="createcancelbooking"),
+    
 
     path('api/createpassportperson', create_passport_with_person, name="createpersonpassport"),
     path('api/personbypassport/<int:pass_id>/', person_by_passport, name="creategetproductbycategory"),

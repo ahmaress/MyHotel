@@ -8,6 +8,7 @@ from django.shortcuts import render
 from datetime import date
 from django.http import JsonResponse
 from django.contrib.auth.models import User
+from decimal import Decimal
 from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -131,6 +132,7 @@ def create_booking(request):
 
             selected_room = available_rooms.first()  
             room_payment_amount = selected_room.price * num_days  # Calculate payment amount for the current room
+            print(room_payment_amount)
 
             total_payment_amount += room_payment_amount  # Accumulate the total payment amount
             
@@ -203,7 +205,68 @@ def process_payment(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+def cancel_booking(request):
+    try:
+        # Extract data from the request
+        data = request.data
+        username = data.get('username')
+        booking_ids = data.get('booking_ids', [])
 
+        if not username or not booking_ids:
+            return Response({'error': 'Invalid request data'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Use transaction.atomic to ensure atomicity of the operations
+        with transaction.atomic():
+            for booking_id in booking_ids:
+                # Fetch the booking
+                booking = Booking.objects.get(id=booking_id)
+
+                # Check if the booking is already canceled
+                if booking.is_canceled:
+                    return Response({'error': f'Booking with ID {booking_id} is already canceled'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # If the booking is paid, deduct 30% before canceling
+                if booking.is_paid:
+                    original_amount = booking.payment_amount
+                    deduction_amount = Decimal(original_amount) * Decimal(0.3)
+                    refund_amount = Decimal(original_amount) - deduction_amount
+
+                    # Perform the deduction
+                    booking.payment_amount -= deduction_amount
+                    booking.save()
+                    
+                    booking.deduction_amount=deduction_amount
+                    booking.save()
+
+                    # Mark the booking as canceled
+                    booking.is_canceled = True
+                    
+                    booking.save()
+
+                    # Make the rooms available for other customers
+                    for room in booking.rooms.all():
+                        room.is_booked = False
+                        room.save()
+
+                # If the booking is not paid, simply mark it as canceled
+                else:
+                    booking.is_canceled = True
+                    booking.save()
+
+                    # Make the rooms available for other customers
+                    for room in booking.rooms.all():
+                        room.is_booked = False
+                        room.save()
+
+            # Return a response after processing all bookings
+            return Response({'message': f'Bookings canceled successfully. Rooms made available.'}, status=status.HTTP_200_OK)
+
+    except Booking.DoesNotExist:
+        return Response({'error': 'One or more bookings not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])

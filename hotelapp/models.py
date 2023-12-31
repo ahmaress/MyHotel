@@ -74,8 +74,8 @@ class Booking(models.Model):
     check_out_date = models.DateField()
     payment_amount = models.DecimalField(max_digits=10, decimal_places=2,null=True)
     is_paid = models.BooleanField(default=False,null=True)
-    # deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    # is_canceled = models.BooleanField(default=False,null=True)
+    deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    is_canceled = models.BooleanField(default=False,null=True)
 
 
 class Payment(models.Model):
