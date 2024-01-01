@@ -192,10 +192,6 @@ def process_payment(request):
                 booking.is_paid = True
                 booking.save() 
 
-                # print(f"Booking ID: {booking_id}, Payment Amount: {payment.amount}")
-
-            # Update the bookings to mark them as paid
-            # Booking.objects.filter(id__in=booking_ids).update(is_paid=True)
 
         return Response({'message': 'Payment processed successfully'}, status=status.HTTP_200_OK)
 
@@ -221,45 +217,35 @@ def cancel_booking(request):
             for booking_id in booking_ids:
                 # Fetch the booking
                 booking = Booking.objects.get(id=booking_id)
-
-                # Check if the booking is already canceled
                 if booking.is_canceled:
                     return Response({'error': f'Booking with ID {booking_id} is already canceled'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # If the booking is paid, deduct 30% before canceling
                 if booking.is_paid:
                     original_amount = booking.payment_amount
                     deduction_amount = Decimal(original_amount) * Decimal(0.3)
                     refund_amount = Decimal(original_amount) - deduction_amount
-
-                    # Perform the deduction
                     booking.payment_amount -= deduction_amount
                     booking.save()
                     
                     booking.deduction_amount=deduction_amount
                     booking.save()
 
-                    # Mark the booking as canceled
                     booking.is_canceled = True
                     
                     booking.save()
 
-                    # Make the rooms available for other customers
                     for room in booking.rooms.all():
                         room.is_booked = False
                         room.save()
 
-                # If the booking is not paid, simply mark it as canceled
                 else:
                     booking.is_canceled = True
                     booking.save()
 
-                    # Make the rooms available for other customers
                     for room in booking.rooms.all():
                         room.is_booked = False
                         room.save()
 
-            # Return a response after processing all bookings
             return Response({'message': f'Bookings canceled successfully. Rooms made available.'}, status=status.HTTP_200_OK)
 
     except Booking.DoesNotExist:
@@ -449,11 +435,7 @@ def hotels_by_amenity(request, amenity_id):
     try:
         # Get the HotelAmenity instances for the specified amenity
         hotel_amenities = HotelAmenity.objects.filter(amenity_id=amenity_id)
-
-        # Get the hotels associated with the amenity
         hotels = [hotel_amenity.hotel for hotel_amenity in hotel_amenities]
-
-        # Create a list of hotel details
         hotel_list = [{'id': hotel.id, 'name': hotel.name, 'address': hotel.address} for hotel in hotels]
 
         return JsonResponse({'amenity_id': amenity_id, 'hotels': hotel_list})
@@ -464,15 +446,12 @@ def hotels_by_amenity(request, amenity_id):
         
 
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
 def create_review(request):
     try:
         data = request.data
 
         hotel_identifier = data.get('hotel_identifier')  
         hotel = Hotel.objects.get(name=hotel_identifier)
-
-        # Check if a Customer with the specified username exists
         username = data.get('username')
         if Customer.objects.filter(user__username=username).exists():
             # Customer exists, allow to create a review
